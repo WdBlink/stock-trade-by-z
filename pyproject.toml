@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "stocktradebyz"
+version = "0.1.0"
+description = "Z哥战法的Python实现 - 一个基于Python的A股量化选股工具"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{include = "stocktradebyz"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+akshare = "1.17.7"
+mootdx = "0.11.7"
+numpy = "2.2"
+optuna = "4.4.0"
+pandas = "2.3.0"
+tqdm = "4.66.4"
+tushare = "1.4.21"
+scipy = "1.14.1"
+
+[tool.poetry.scripts]
+fetch-kline = "stocktradebyz.cli:fetch_kline"
+select-stock = "stocktradebyz.cli:select_stock"
+init-stocktrade = "stocktradebyz.init:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

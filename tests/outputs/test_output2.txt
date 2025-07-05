@@ -1,0 +1,13 @@
+Python版本: 3.12.4 | packaged by Anaconda, Inc. | (main, Jun 18 2024, 10:07:17) [Clang 14.0.6 ]
+当前工作目录: /Users/echooo/Documents/Code/github_star/StockTradebyZ
+sys.path: ['/Users/echooo/Documents/Code/github_star/StockTradebyZ', '/opt/anaconda3/lib/python312.zip', '/opt/anaconda3/lib/python3.12', '/opt/anaconda3/lib/python3.12/lib-dynload', '/opt/anaconda3/lib/python3.12/site-packages', '/Users/echooo/Documents/Code/github_star/langchain-mcp-adapters/servers/src/alpha-vantage-mcp/src', '/opt/anaconda3/lib/python3.12/site-packages/aeosa']
+
+尝试导入 Selector 模块...
+成功导入 Selector 模块
+
+尝试导入 pandas...
+成功导入 pandas
+
+尝试列出 data 目录中的文件...
+data 目录路径: /Users/echooo/Documents/Code/github_star/StockTradebyZ/data
+data 目录中的文件: ['000003.csv', '000002.csv', '000001.csv']
