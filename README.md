@@ -1,47 +1,49 @@
-# Z哥战法的Python实现
+#  量化策略的Python实现
 
 > **更新时间：2025-07-03** – 增加填坑战法。
+> **更新时间：2025-07-04** – 增加港股数据获取功能。
 
 ---
 
 ## 目录
 
-* [项目简介](#项目简介)
-* [快速上手](#快速上手)
-
-  * [安装依赖](#安装依赖)
-  * [初始化项目](#初始化项目)
-  * [Tushare Token（可选）](#tushare-token可选)
-  * [Mootdx 运行前置步骤](#mootdx-运行前置步骤)
-  * [下载历史行情](#下载历史行情)
-  * [运行选股](#运行选股)
-* [参数说明](#参数说明)
-
-  * [命令行工具](#命令行工具)
-  * [K 线频率编码](#k-线频率编码)
-  * [内置策略参数](#内置策略参数)
-
-    * [1. BBIKDJSelector（少妇战法）](#1-bbikdjselector少妇战法)
-    * [2. PeakKDJSelector（填坑战法）](#2-peakkdjselector填坑战法)
-    * [3. BBIShortLongSelector（补票战法）](#3-bbishortlongselector补票战法)
-    * [4. BreakoutVolumeKDJSelector（TePu 战法）](#4-breakoutvolumekdjselectortepu-战法)
-* [项目结构](#项目结构)
-* [免责声明](#免责声明)
+- [量化策略的Python实现](#量化策略的python实现)
+  - [目录](#目录)
+  - [项目简介](#项目简介)
+  - [快速上手](#快速上手)
+    - [安装依赖](#安装依赖)
+    - [初始化项目](#初始化项目)
+    - [Tushare Token（可选）](#tushare-token可选)
+    - [Mootdx 运行前置步骤](#mootdx-运行前置步骤)
+    - [下载历史行情](#下载历史行情)
+    - [运行选股](#运行选股)
+  - [参数说明](#参数说明)
+    - [命令行工具](#命令行工具)
+      - [fetch-kline 参数](#fetch-kline-参数)
+      - [select-stock 参数](#select-stock-参数)
+    - [K 线频率编码](#k-线频率编码)
+    - [内置策略参数](#内置策略参数)
+      - [1. BBIKDJSelector（等待B1战法）](#1-bbikdjselector等待b1战法)
+      - [2. PeakKDJSelector（填坑战法）](#2-peakkdjselector填坑战法)
+      - [3. BBIShortLongSelector（补票战法）](#3-bbishortlongselector补票战法)
+      - [4. BreakoutVolumeKDJSelector（TePu 战法）](#4-breakoutvolumekdjselectortepu-战法)
+  - [项目结构](#项目结构)
+  - [免责声明](#免责声明)
 
 ---
 
 ## 项目简介
 
-一个基于Python的A股量化选股工具，包含以下功能：
+一个基于Python的量化选股工具，支持A股和港股，包含以下功能：
 
 | 名称                    | 功能简介                                                                                                             |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **`fetch-kline`**  | *按市值筛选* A 股股票，并抓取其**历史 K 线**保存为 CSV。支持 **AkShare / Tushare / Mootdx** 三大数据源，自动增量更新、多线程下载。*本版本不再保存市值快照*，每次运行实时拉取。 |
+| **`fetch-kline`**  | *按市值筛选* A 股股票，并抓取其**历史 K 线**保存为 CSV。支持 **AkShare / Tushare / Mootdx** 三大数据源，自动增量更新、多线程下载。*本版本不再保存市值快照*，每次运行实时拉取。同时支持获取港股历史数据（通过AKShare）。 |
 | **`select-stock`** | 读取本地 CSV 行情，依据 `configs.json` 中的 **Selector** 定义批量选股，结果输出到 `select_results.log` 与控制台。                            |
 
 内置策略：
 
-* **BBIKDJSelector**（少妇战法）
+* **BBIKDJSelector**（等待B1战法）
 * **PeakKDJSelector**（填坑战法）
 * **BBIShortLongSelector**（补票战法）
 * **BreakoutVolumeKDJSelector**（TePu 战法）
@@ -80,7 +82,7 @@ python -m stocktradebyz.init
 若选择 **Tushare** 作为数据源，请按以下步骤操作：
 
 1. **注册账号**
-   点击专属注册链接 [https://tushare.pro/register?reg=820660](https://tushare.pro/register?reg=820660) 完成注册。*通过该链接注册，我将获得 50 积分 – 感谢支持！*
+   点击专属注册链接 [https://tushare.pro/register?reg=639112](https://tushare.pro/register?reg=639112 ) 完成注册。*通过该链接注册，我将获得 50 积分 – 感谢支持！*
 2. **开通基础权限**
    登录后进入「**平台介绍 → 社区捐助**」，按提示捐赠 **200 元/年** 可解锁 Tushare 基础接口。
 3. **获取 Token**
@@ -128,6 +130,8 @@ python main.py fetch \
   --end today              # 结束日期
   --out ./data             # 输出目录
   --workers 3              # 并发线程数
+  --include-hk             # 是否包含港股数据
+  --hk-codes 00700,01810   # 港股代码列表，逗号分隔
 ```
 
 *首跑* 下载完整历史；之后脚本会 **增量更新**。  
@@ -197,6 +201,8 @@ python main.py select  # 运行选股策略
 | `--start` / `--end` | `today`  | 日期范围，`YYYYMMDD` 或 `today`            |
 | `--out`             | `./data` | 输出目录                                 |
 | `--workers`         | `3`     | 并发线程数                                |
+| `--include-hk`      | flag     | 是否包含港股数据                             |
+| `--hk-codes`        | `""` | 港股代码列表，逗号分隔，例如：`00700,02318,03690`，为空则使用默认热门港股 |
 
 #### select-stock 参数
 
@@ -228,7 +234,7 @@ python main.py select  # 运行选股策略
 
 以下参数均来自 **`configs.json`**，可根据个人喜好自由调整。
 
-#### 1. BBIKDJSelector（少妇战法）
+#### 1. BBIKDJSelector（等待B1战法）
 
 | 参数                | 预设值    | 说明                                                  |
 | ----------------- | ------ | --------------------------------------------------- |

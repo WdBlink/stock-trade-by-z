@@ -55,8 +55,8 @@ def test_selectors(data, trade_date):
         data: 股票数据字典
         trade_date: 交易日期
     """
-    # 测试少妇战法
-    logger.info("\n============== 测试少妇战法 ==============")
+    # 测试等待B1战法
+    logger.info("\n============== 测试等待B1战法 ==============")
     selector1 = BBIKDJSelector(
         j_threshold=1,
         bbi_min_window=20,
@@ -66,7 +66,7 @@ def test_selectors(data, trade_date):
         j_q_threshold=0.10
     )
     picks1 = selector1.select(trade_date, data)
-    logger.info(f"少妇战法选出股票: {picks1}")
+    logger.info(f"等待B1战法选出股票: {picks1}")
     
     # 测试补票战法
     logger.info("\n============== 测试补票战法 ==============")

@@ -54,8 +54,8 @@ def main():
     trade_date = pd.to_datetime("2023-06-30")
     print(f"使用交易日: {trade_date.date()}")
     
-    # 测试少妇战法
-    print("\n============== 测试少妇战法 ==============")
+    # 测试等待B1战法
+    print("\n============== 测试等待B1战法 ==============")
     selector1 = BBIKDJSelector(
         j_threshold=1,
         bbi_min_window=20,
@@ -65,7 +65,7 @@ def main():
         j_q_threshold=0.10
     )
     picks1 = selector1.select(trade_date, data)
-    print(f"少妇战法选出股票: {picks1}")
+    print(f"等待B1战法选出股票: {picks1}")
     
     # 测试补票战法
     print("\n============== 测试补票战法 ==============")

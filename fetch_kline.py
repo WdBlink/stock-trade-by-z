@@ -178,6 +178,80 @@ def _get_kline_akshare(code: str, start: str, end: str, adjust: str) -> pd.DataF
     df = df[["date", "open", "close", "high", "low", "volume"]]
     return df.sort_values("date").reset_index(drop=True)
 
+# ---------- 港股 AKShare 工具函数 ---------- #
+
+def _get_kline_hk_akshare(code: str, start: str, end: str, adjust: str) -> pd.DataFrame:
+    """获取港股历史K线数据
+    
+    Args:
+        code: 港股代码，例如 "00700"（腾讯控股）
+        start: 开始日期，格式为 YYYYMMDD
+        end: 结束日期，格式为 YYYYMMDD
+        adjust: 复权类型，可选值为 "qfq"（前复权）、"hfq"（后复权）或 ""（不复权）
+        
+    Returns:
+        包含日期、开盘价、收盘价、最高价、最低价和成交量的DataFrame
+    """
+    logger.info("开始获取港股 %s 的历史数据，日期范围：%s 至 %s", code, start, end)
+    for attempt in range(1, 4):
+        try:
+            logger.info("尝试调用 ak.stock_hk_hist 获取港股 %s 数据 (尝试 %d/3)", code, attempt)
+            df = ak.stock_hk_hist(
+                symbol=code,
+                start_date=start,
+                end_date=end,
+                adjust=adjust,
+            )
+            logger.info("成功获取港股 %s 数据", code)
+            break
+        except Exception as e:
+            logger.warning("AKShare 拉取港股 %s 失败(%d/3): %s", code, attempt, e)
+            time.sleep(random.uniform(1, 2) * attempt)
+    else:
+        logger.error("港股 %s 数据获取失败，已尝试3次", code)
+        return pd.DataFrame()
+
+    if df is None or df.empty:
+        logger.warning("港股 %s 返回的数据为空", code)
+        return pd.DataFrame()
+    
+    logger.info("港股 %s 数据获取成功，原始数据列：%s", code, df.columns.tolist())
+
+    # 港股数据列名可能与A股不同，需要适配
+    column_map = {
+        "日期": "date",
+        "开盘": "open",
+        "收盘": "close",
+        "最高": "high",
+        "最低": "low",
+        "成交量": "volume",
+        "成交额": "amount"
+    }
+    
+    # 确保所有需要的列都存在
+    available_columns = [col for col in column_map.keys() if col in df.columns]
+    
+    df = (
+        df[available_columns]
+        .rename(columns={col: column_map[col] for col in available_columns})
+        .assign(date=lambda x: pd.to_datetime(x["date"]))
+    )
+    
+    # 确保必要的列存在
+    required_columns = ["date", "open", "close", "high", "low", "volume"]
+    for col in required_columns:
+        if col not in df.columns:
+            logger.warning(f"港股 {code} 数据缺少 {col} 列")
+            return pd.DataFrame()
+    
+    # 转换为数值类型
+    df[[c for c in df.columns if c != "date"]] = df[[c for c in df.columns if c != "date"]].apply(
+        pd.to_numeric, errors="coerce"
+    )
+    
+    df = df[required_columns]
+    return df.sort_values("date").reset_index(drop=True)
+
 # ---------- Mootdx 工具函数 ---------- #
 
 def _get_kline_mootdx(code: str, start: str, end: str, adjust: str, freq_code: int) -> pd.DataFrame:    
@@ -211,7 +285,17 @@ def get_kline(
     adjust: str,
     datasource: str,
     freq_code: int = 4,
+    market: str = "A",  # 新增参数，默认为A股市场
 ) -> pd.DataFrame:
+    logger.info("调用 get_kline 函数获取 %s 股票 %s 的数据，数据源: %s", "港" if market == "HK" else "A", code, datasource)
+    # 港股市场只支持akshare数据源
+    if market == "HK":
+        if datasource != "akshare":
+            logger.warning("港股数据目前仅支持AKShare数据源，已自动切换为AKShare")
+        logger.info("开始调用 _get_kline_hk_akshare 函数获取港股 %s 数据", code)
+        return _get_kline_hk_akshare(code, start, end, adjust)
+    
+    # A股市场支持多种数据源
     if datasource == "tushare":
         return _get_kline_tushare(code, start, end, adjust)
     elif datasource == "akshare":
@@ -242,8 +326,13 @@ def fetch_one(
     incremental: bool,
     datasource: str,
     freq_code: int,
+    market: str = "A",  # 新增参数，默认为A股市场
 ):    
-    csv_path = out_dir / f"{code}.csv"
+    # 对于港股，文件名添加HK前缀以区分
+    prefix = "HK_" if market == "HK" else ""
+    csv_path = out_dir / f"{prefix}{code}.csv"
+    
+    logger.info("%s股票 %s 开始获取数据，输出路径: %s", "港" if market == "HK" else "A", code, csv_path)
 
     # 增量更新：若本地已有数据则从最后一天开始
     if incremental and csv_path.exists():
@@ -259,7 +348,7 @@ def fetch_one(
 
     for attempt in range(1, 4):
         try:            
-            new_df = get_kline(code, start, end, "qfq", datasource, freq_code)
+            new_df = get_kline(code, start, end, "qfq", datasource, freq_code, market)
             if new_df.empty:
                 logger.debug("%s 无新数据", code)
                 break
@@ -289,7 +378,7 @@ def fetch_one(
 # ---------- 主入口 ---------- #
 
 def main():
-    parser = argparse.ArgumentParser(description="按市值筛选 A 股并抓取历史 K 线")
+    parser = argparse.ArgumentParser(description="按市值筛选股票并抓取历史 K 线")
     parser.add_argument("--datasource", choices=["tushare", "akshare", "mootdx"], default="tushare", help="历史 K 线数据源")
     parser.add_argument("--frequency", type=int, choices=list(_FREQ_MAP.keys()), default=4, help="K线频率编码，参见说明")
     parser.add_argument("--exclude-gem", default=True, help="True则排除创业板/科创板/北交所")
@@ -299,6 +388,8 @@ def main():
     parser.add_argument("--end", default="today", help="结束日期 YYYYMMDD 或 'today'")
     parser.add_argument("--out", default="./data", help="输出目录")
     parser.add_argument("--workers", type=int, default=3, help="并发线程数")
+    parser.add_argument("--include-hk", action="store_true", help="是否包含港股数据")
+    parser.add_argument("--hk-codes", default="", help="港股代码列表，逗号分隔，例如：00700,02318,03690")
     args = parser.parse_args()
 
     # ---------- Token 处理 ---------- #
@@ -332,31 +423,83 @@ def main():
         logger.error("筛选结果为空，请调整参数！")
         sys.exit(1)
 
+    # ---------- 处理港股代码 ---------- #
+    hk_codes = []
+    if args.include_hk:
+        logger.info("检测到 --include-hk 参数，将获取港股数据")
+        if args.hk_codes:
+            # 从命令行参数获取港股代码
+            hk_codes = [code.strip() for code in args.hk_codes.split(",") if code.strip()]
+            logger.info("从命令行参数获取 %d 只港股: %s", len(hk_codes), hk_codes)
+        else:
+            # 如果没有指定港股代码，可以添加一些默认的热门港股
+            default_hk_codes = ["00700", "01810", "03690", "09988", "02318", "00388", "00941", "02020"]
+            hk_codes = default_hk_codes
+            logger.info("使用默认的 %d 只热门港股: %s", len(hk_codes), hk_codes)
+    
+    # 日志输出
+    market_info = "A股"
+    if args.include_hk:
+        market_info = "A股和港股"
+    
     logger.info(
-        "开始抓取 %d 支股票 | 数据源:%s | 频率:%s | 日期:%s → %s",
-        len(codes),
+        "开始抓取 %d 支%s | 数据源:%s | 频率:%s | 日期:%s → %s",
+        len(codes) + (len(hk_codes) if args.include_hk else 0),
+        market_info,
         args.datasource,
         _FREQ_MAP[args.frequency],
         start,
         end,
     )
-
+    
     # ---------- 多线程抓取 ---------- #
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
-        futures = [
-            executor.submit(
-                fetch_one,
-                code,
-                start,
-                end,
-                out_dir,
-                True,
-                args.datasource,
-                args.frequency,
-            )
-            for code in codes
-        ]
-        for _ in tqdm(as_completed(futures), total=len(futures), desc="下载进度"):
+        # A股抓取任务
+        a_futures = []
+        if codes:
+            logger.info("开始提交 %d 只A股抓取任务", len(codes))
+            a_futures = [
+                executor.submit(
+                    fetch_one,
+                    code,
+                    start,
+                    end,
+                    out_dir,
+                    True,
+                    args.datasource,
+                    args.frequency,
+                    "A",  # A股市场
+                )
+                for code in codes
+            ]
+        
+        # 港股抓取任务
+        hk_futures = []
+        if args.include_hk and hk_codes:
+            logger.info("开始提交 %d 只港股抓取任务", len(hk_codes))
+            # 如果只获取港股数据，则单独处理
+            if not codes:
+                logger.info("仅获取港股数据")
+            
+            hk_futures = [
+                executor.submit(
+                    fetch_one,
+                    code,
+                    start,
+                    end,
+                    out_dir,
+                    True,
+                    "akshare",  # 港股只支持akshare
+                    args.frequency,
+                    "HK",  # 港股市场
+                )
+                for code in hk_codes
+            ]
+        
+        # 合并所有任务
+        all_futures = a_futures + hk_futures
+        logger.info("总共提交 %d 个抓取任务", len(all_futures))
+        for _ in tqdm(as_completed(all_futures), total=len(all_futures), desc="下载进度"):
             pass
 
     logger.info("全部任务完成，数据已保存至 %s", out_dir.resolve())

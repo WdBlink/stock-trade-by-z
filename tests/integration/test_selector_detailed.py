@@ -103,14 +103,14 @@ def analyze_stock_data(code, df, trade_date):
 
 def test_bbi_kdj_selector(data, trade_date, indicators):
     """
-    详细测试少妇战法选股器
+    详细测试等待B1战法选股器
     
     Args:
         data: 股票数据字典
         trade_date: 交易日期
         indicators: 预计算的指标字典
     """
-    logger.info("\n============== 详细测试少妇战法 ==============")
+    logger.info("\n============== 详细测试等待B1战法 ==============")
     selector = BBIKDJSelector(
         j_threshold=1,
         bbi_min_window=20,
@@ -135,7 +135,7 @@ def test_bbi_kdj_selector(data, trade_date, indicators):
         
         # 检查BBI上升趋势条件
         bbi_uptrend = ind['uptrend'][idx]
-        logger.info(f"\n股票 {code} 少妇战法条件检查:")
+        logger.info(f"\n股票 {code} 等待B1战法条件检查:")
         logger.info(f"1. BBI上升趋势: {bbi_uptrend} {'✓' if bbi_uptrend else '✗'}")
         
         if not bbi_uptrend:
@@ -169,11 +169,11 @@ def test_bbi_kdj_selector(data, trade_date, indicators):
             logger.info(f"  股票 {code} 不满足价格波动范围条件，跳过后续检查")
             continue
         
-        logger.info(f"  股票 {code} 满足所有少妇战法条件 ✓")
+        logger.info(f"  股票 {code} 满足所有等待B1战法条件 ✓")
     
     # 运行选股器获取结果
     picks = selector.select(trade_date, data)
-    logger.info(f"少妇战法最终选出股票: {picks}")
+    logger.info(f"等待B1战法最终选出股票: {picks}")
     return picks
 
 

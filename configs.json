@@ -2,7 +2,7 @@
   "selectors": [
     {
       "class": "BBIKDJSelector",
-      "alias": "少妇战法",
+      "alias": "等待B1策略",
       "activate": true,
       "params": {
         "j_threshold": 1,
@@ -15,7 +15,7 @@
     },
     {
       "class": "BBIShortLongSelector",
-      "alias": "补票战法",
+      "alias": "补票策略",
       "activate": true,
       "params": {
         "n_short": 3,
@@ -28,7 +28,7 @@
     },
     {
       "class": "BreakoutVolumeKDJSelector",
-      "alias": "TePu战法",
+      "alias": "BreakOut策略",
       "activate": true,
       "params": {
         "j_threshold": 1,
@@ -42,7 +42,7 @@
     },
     {
       "class": "PeakKDJSelector",        
-      "alias": "填坑战法",
+      "alias": "填坑策略",
       "activate": true,                 
       "params": {
         "j_threshold": 10,                 

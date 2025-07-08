@@ -102,14 +102,14 @@ def analyze_stock_data(stock_code, df):
 
 def test_bbikdj_selector(trade_date, data, indicators):
     """
-    测试少妇战法
+    测试等待B1战法
     
     Args:
         trade_date: 交易日期
         data: 股票数据字典
         indicators: 技术指标字典
     """
-    print_flush("\n============== 测试少妇战法 ==============")
+    print_flush("\n============== 测试等待B1战法 ==============")
     selector = BBIKDJSelector(
         j_threshold=1,
         bbi_min_window=20,
@@ -119,7 +119,7 @@ def test_bbikdj_selector(trade_date, data, indicators):
         j_q_threshold=0.10
     )
     
-    print_flush("少妇战法参数:")
+    print_flush("等待B1战法参数:")
     print_flush(f"  j_threshold: {selector.j_threshold}")
     print_flush(f"  bbi_min_window: {selector.bbi_min_window}")
     print_flush(f"  max_window: {selector.max_window}")
@@ -172,7 +172,7 @@ def test_bbikdj_selector(trade_date, data, indicators):
         if all_conditions:
             picks.append(stock_code)
     
-    print_flush(f"\n少妇战法选出股票: {picks}")
+    print_flush(f"\n等待B1战法选出股票: {picks}")
     return picks
 
 

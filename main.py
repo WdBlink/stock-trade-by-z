@@ -43,8 +43,12 @@ def main():
     args = parser.parse_args()
     
     if args.command == "fetch":
+        # 将命令行参数传递给 fetch.main()
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
         fetch.main()
     elif args.command == "select":
+        # 将命令行参数传递给 select.main()
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
         select.main()
     elif args.command == "init":
         init.init_project(args.data_dir)

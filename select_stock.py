@@ -17,7 +17,7 @@ logging.basicConfig(
     handlers=[
         logging.StreamHandler(sys.stdout),
         # 将日志写入文件
-        logging.FileHandler("select_results.log", encoding="utf-8"),
+        logging.FileHandler("select_results.log", encoding="utf-8", mode="w"),
     ],
 )
 logger = logging.getLogger("select")
@@ -83,7 +83,12 @@ def main():
     p.add_argument("--config", default="./configs.json", help="Selector 配置文件")
     p.add_argument("--date", help="交易日 YYYY-MM-DD；缺省=数据最新日期")
     p.add_argument("--tickers", default="all", help="'all' 或逗号分隔股票代码列表")
+    p.add_argument("--verbose", "-v", action="store_true", help="显示详细日志")
     args = p.parse_args()
+    
+    # 如果启用详细日志，设置日志级别为 DEBUG
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
 
     # --- 加载行情 ---
     data_dir = Path(args.data_dir)
@@ -119,14 +124,18 @@ def main():
     # --- 逐个 Selector 运行 ---
     for cfg in selector_cfgs:
         if cfg.get("activate", True) is False:
+            logger.debug("跳过未激活的选股器: %s", cfg.get("class", "未知"))
             continue
         try:
             alias, selector = instantiate_selector(cfg)
+            logger.debug("实例化选股器: %s (%s)", alias, cfg.get("class", "未知"))
         except Exception as e:
             logger.error("跳过配置 %s：%s", cfg, e)
             continue
 
+        logger.debug("开始运行选股器: %s, 日期: %s", alias, trade_date.date())
         picks = selector.select(trade_date, data)
+        logger.debug("选股器 %s 完成运行, 找到 %d 只符合条件的股票", alias, len(picks))
 
         # 将结果写入日志，同时输出到控制台
         logger.info("")
