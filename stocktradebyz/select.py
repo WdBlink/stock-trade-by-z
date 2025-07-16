@@ -5,6 +5,7 @@ import importlib
 import json
 import logging
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
@@ -27,6 +28,10 @@ logger = logging.getLogger("select")
 ts_token = "239022239ebb827ebf20e8a87fc68f0c7c851b42593c5dddc5451c75"
 ts.set_token(ts_token)
 pro = ts.pro_api()
+
+# API访问频率控制
+api_call_times = []
+MAX_CALLS_PER_MINUTE = 10
 
 
 # ---------- 工具 ----------
@@ -98,6 +103,46 @@ def _to_ts_code(code: str) -> str:
     return f"{code.zfill(6)}.SH" if code.startswith(("60", "68", "9")) else f"{code.zfill(6)}.SZ"
 
 
+def _check_api_rate_limit() -> None:
+    """检查API访问频率限制，如果超过限制则等待
+    
+    每分钟最多允许10次API调用，超过限制时等待一分钟
+    """
+    global api_call_times
+    current_time = time.time()
+    
+    # 清理一分钟前的记录
+    api_call_times = [t for t in api_call_times if current_time - t < 60]
+    
+    # 如果当前分钟内已经调用了10次，等待到下一分钟
+    if len(api_call_times) >= MAX_CALLS_PER_MINUTE:
+        wait_time = 60 - (current_time - api_call_times[0])
+        if wait_time > 0:
+            logger.info(f"API调用频率达到限制(每分钟{MAX_CALLS_PER_MINUTE}次)，等待 {wait_time:.1f} 秒...")
+            time.sleep(wait_time)
+            # 重新清理记录
+            current_time = time.time()
+            api_call_times = [t for t in api_call_times if current_time - t < 60]
+    
+    # 记录本次调用时间
+    api_call_times.append(current_time)
+
+
+def _safe_api_call(api_func, *args, **kwargs):
+    """安全的API调用，包含频率限制检查
+    
+    Args:
+        api_func: 要调用的API函数
+        *args: API函数的位置参数
+        **kwargs: API函数的关键字参数
+        
+    Returns:
+        API调用结果
+    """
+    _check_api_rate_limit()
+    return api_func(*args, **kwargs)
+
+
 def get_stock_basic_info(picks: List[str]) -> None:
     """获取并打印股票基本信息
     
@@ -109,19 +154,34 @@ def get_stock_basic_info(picks: List[str]) -> None:
         
     logger.info("")
     logger.info("============== 股票基本信息 ==============")
+    logger.info(f"开始获取 {len(picks)} 只股票的基本信息...")
     
-    for code in picks:
+    for i, code in enumerate(picks, 1):
         try:
+            logger.info(f"正在获取第 {i}/{len(picks)} 只股票: {code}")
             ts_code = _to_ts_code(code)
             
-            # 获取股票基本信息
-            basic_info = pro.stock_basic(ts_code=ts_code, fields='ts_code,symbol,name,area,industry,market,list_date')
+            # 使用安全的API调用方式获取股票基本信息
+            basic_info = _safe_api_call(
+                pro.stock_basic, 
+                ts_code=ts_code, 
+                fields='ts_code,symbol,name,area,industry,market,list_date'
+            )
             
             # 获取最新的财务指标（包含市盈率等）
-            daily_basic = pro.daily_basic(ts_code=ts_code, trade_date='', fields='ts_code,pe,pb,ps,dv_ratio,total_mv')
+            daily_basic = _safe_api_call(
+                pro.daily_basic, 
+                ts_code=ts_code, 
+                trade_date='', 
+                fields='ts_code,pe,pb,ps,dv_ratio,total_mv'
+            )
             
             # 获取公司简介
-            company_info = pro.stock_company(ts_code=ts_code, fields='ts_code,chairman,manager,secretary,reg_capital,setup_date,province,city,introduction,website,email,office,employees,main_business,business_scope')
+            company_info = _safe_api_call(
+                pro.stock_company, 
+                ts_code=ts_code, 
+                fields='ts_code,chairman,manager,secretary,reg_capital,setup_date,province,city,introduction,website,email,office,employees,main_business,business_scope'
+            )
             
             if not basic_info.empty:
                 stock_info = basic_info.iloc[0]
@@ -158,6 +218,8 @@ def get_stock_basic_info(picks: List[str]) -> None:
         except Exception as e:
             logger.warning(f"获取股票 {code} 基本信息失败: {e}")
             continue
+    
+    logger.info(f"股票基本信息获取完成，共处理 {len(picks)} 只股票")
 
 
 # ---------- 主函数 ----------
@@ -218,8 +280,7 @@ def main():
         logger.info("============== 选股结果 [%s] ==============", alias)
         logger.info("交易日: %s", trade_date.date())
         logger.info("符合条件股票数: %d", len(picks))
-        logger.info("%s", ", ".join(picks) if picks else "无符合条件股票")
-        
+        logger.info("%s", ", ".join(picks) if picks else "无符合条件股票")        
         # 获取并打印股票基本信息
         if picks:
             get_stock_basic_info(picks)
